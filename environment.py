@@ -107,7 +107,6 @@ class WumpusEnvironment:
                 if neighbor == 'Pit':
                     breeze = True
 
-        # 교수님 가이드라인의 [Stench, Breeze, Glitter, Bump, Scream] 순서대로 반환합니다.
         return [stench, breeze, glitter, bump, scream]
 
 if __name__ == "__main__": #맵 실행 확인용
