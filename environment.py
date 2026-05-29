@@ -74,5 +74,41 @@ class WumpusEnvironment:
                 row_str += f"[{element:<8}] "
             print(row_str)
 
+    def get_percept(self, agent_x, agent_y, bumped, shot_arrow_hit): #에이전트 위치 기준 percept생성
+        stench = False
+        breeze = False
+        
+        glitter = (self.grid[(agent_x, agent_y)] == 'Gold') #현재 칸에 금있으면 Glitter는 참
+        bump = bumped
+        scream = shot_arrow_hit
+
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+        current_element = self.grid[(agent_x, agent_y)]
+        if self.wumpus_alive and current_element == 'Wumpus':
+            stench = True
+        if current_element == 'Pit':
+            breeze = True
+
+        # 주변 4칸을 돌면 괴물이나 웅덩이 있는지 검사
+        for dx, dy in directions:
+            nx = agent_x + dx
+            ny = agent_y + dy
+
+            # 벽 넘어는 탐지 안하게 safe걸기
+            if 1 <= nx <= 4 and 1 <= ny <= 4:
+                neighbor = self.grid[(nx, ny)]
+                
+                # 주변에 웜프스 있으면 악취 발생
+                if self.wumpus_alive and neighbor == 'Wumpus':
+                    stench = True
+                
+                # 주변에 구덩이 있으면 미풍 발생
+                if neighbor == 'Pit':
+                    breeze = True
+
+        # 교수님 가이드라인의 [Stench, Breeze, Glitter, Bump, Scream] 순서대로 반환합니다.
+        return [stench, breeze, glitter, bump, scream]
+
 if __name__ == "__main__": #맵 실행 확인용
     env = WumpusEnvironment()
