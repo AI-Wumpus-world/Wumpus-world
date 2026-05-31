@@ -50,7 +50,7 @@ def get_neighbor(cell, direction):
 
 
 def find_path_to_target(start, targets, movable_cells):
-    """movable_cells 안에서 start -> targets 중 하나까지 가는 방향 리스트를 BFS로 찾는다."""
+    # movable_cells 안에서 start -> targets 중 하나까지 가는 방향 리스트를 BFS로 탐색
     queue = deque([(start, [])])
     visited = {start}
 
@@ -70,20 +70,23 @@ def find_path_to_target(start, targets, movable_cells):
 
 
 def choose_action(agent, kb, percept):
-    """
-    Percept -> Reasoning -> Action 흐름 중 Reasoning/Action 선택 부분.
-    1순위: 현재 칸에 금이 있으면 Grab
-    2순위: 금을 가진 뒤 (1,1)이면 Climb
-    3순위: 금을 가진 뒤 안전한 칸을 통해 (1,1)로 복귀
-    4순위: 아직 방문하지 않은 안전 칸 탐험
-    5순위: 안전 칸이 없으면 인접한 미방문 unknown 칸을 위험 감수하고 탐험
-    6순위: 전부 막히면 회전
-    """
+    
+    # Percept -> Reasoning -> Action 흐름 중 Reasoning/Action 선택 부분.
+    # 1순위: 현재 칸에 금이 있으면 Grab
+    # 2순위: 금을 가진 뒤 (1,1)이면 Climb
+    # 3순위: 금을 가진 뒤 안전한 칸을 통해 (1,1)로 복귀
+    # 4순위: 아직 방문하지 않은 안전 칸 탐험
+    # 5순위: 안전 칸이 없으면 인접한 미방문 unknown 칸을 위험 감수하고 탐험
+    # 6순위: 전부 막히면 회전
+    
     stench, breeze, glitter, bump, scream = percept
     current_cell = (agent.x, agent.y)
 
     if glitter and not agent.has_gold:
         return "Grab"
+
+    if stench and agent.arrows > 0 and not agent.has_gold:
+        return "Shoot"
 
     if agent.has_gold:
         if current_cell == (1, 1):
