@@ -56,23 +56,10 @@ class WumpusEnvironment:
         self.wumpus_alive = True
         self.scream = False
         
-        #맵 생성 결과 출력
-        self.print_secret_map()
-
     def restart_same_run(self): #에이전트 죽었을 때 호출 괴물,웅덩이, 금 위치는 고정
         self.wumpus_alive = True 
         self.scream = False
         print("\n에이전트가 사망")
-        self.print_secret_map()
-
-    def print_secret_map(self): #에이전트는 못보는 지도
-        print(f"\n=== 웜프스 지도 (현재 RUN) ===")
-        for y in range(4, 0, -1):
-            row_str = ""
-            for x in range(1, 5):
-                element = self.grid[(x, y)]
-                row_str += f"[{element:<8}] "
-            print(row_str)
 
     def get_percept(self, agent_x, agent_y, bumped, shot_arrow_hit): #에이전트 위치 기준 percept생성
         stench = False
