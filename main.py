@@ -128,9 +128,7 @@ def main():
         time.sleep(STEP_DELAY)
 
         if agent.climb_out:
-            ui.draw(
-                env, agent, kb, percept, "Climb", step, "탐험 종료: 성공", death_count
-            )
+            ui.draw(env, agent, kb, percept, "Climb", step, "탐험 종료: 성공", death_count)
             break
 
         if dead:
@@ -141,16 +139,7 @@ def main():
             time.sleep(STEP_DELAY)
 
             if death_count >= MAX_DEATHS:
-                ui.draw(
-                    env,
-                    agent,
-                    kb,
-                    percept,
-                    "Stop",
-                    step,
-                    "사망 횟수 초과로 종료",
-                    death_count,
-                )
+                ui.draw(env, agent, kb, percept, "Stop", step, "사망 횟수 초과로 종료", death_count)
                 break
 
             env.restart_same_run()

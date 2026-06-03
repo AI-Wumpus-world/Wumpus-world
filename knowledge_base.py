@@ -62,9 +62,10 @@ class WumpusKnowledgeBase:
                 
             # 1. 미풍(Breeze) 기반 추론
             if breeze:
-                # 미풍이 있으면 주변 칸의 위험 점수를 올린다
-                self.pit_prob[adj] += 1
-                self.pit_map[adj] = 'Maybe'
+                # 미풍이 있으면 주변 칸의 위험 점수를 올린다 (확정된 곳이 아닐 때만)
+                if self.pit_map.get(adj) != 'Yes':
+                    self.pit_prob[adj] += 1
+                    self.pit_map[adj] = 'Maybe'
             else:
                 # 미풍이 없으면 주변 칸은 절대 웅덩이가 아니다
                 self.pit_prob[adj] = 0
@@ -72,8 +73,9 @@ class WumpusKnowledgeBase:
 
             # 2. 악취(Stench) 기반 추론
             if stench:
-                self.wumpus_prob[adj] += 1
-                self.wumpus_map[adj] = 'Maybe'
+                if self.wumpus_map.get(adj) != 'Yes':
+                    self.wumpus_prob[adj] += 1
+                    self.wumpus_map[adj] = 'Maybe'
             else:
                 self.wumpus_prob[adj] = 0
                 self.wumpus_map[adj] = 'No'
@@ -188,22 +190,21 @@ class WumpusKnowledgeBase:
         if path_to_any_unvisited:
             return self._turn_toward(agent.get_direction_str(), path_to_any_unvisited[0])
 
-        # 6. 정말 안전한 곳이 더 이상 없으면 위험을 감수하고 가장 점수가 낮은 인접 칸으로 이동
-        best_move = None
-        min_risk = float('inf')
-        
-        for direction in DIRECTION_ORDER:
-            next_cell = self._get_neighbor(current_cell, direction)
-            if not self._in_world(next_cell) or next_cell in self.visited:
-                continue
+        # 6. 정말 안전한 곳이 더 이상 없으면 위험을 감수하고 가장 점수가 낮은 미방문 칸으로 이동
+        all_unvisited = set([(x, y) for x in range(1, 5) for y in range(1, 5)]) - self.visited
+        if all_unvisited:
+            # 위험도가 낮은 순으로 정렬
+            sorted_unvisited = sorted(list(all_unvisited), key=lambda c: self.pit_prob[c] + self.wumpus_prob[c])
             
-            risk = self.pit_prob[next_cell] + self.wumpus_prob[next_cell]
-            if risk < min_risk:
-                min_risk = risk
-                best_move = direction
-
-        if best_move:
-            return self._turn_toward(agent.get_direction_str(), best_move)
+            for target in sorted_unvisited:
+                # 미방문 칸으로 가기 위한 경로 
+                path_to_risk = self._find_path_to_target(
+                    start=current_cell,
+                    targets={target},
+                    movable_cells=self.visited | {target}
+                )
+                if path_to_risk:
+                    return self._turn_toward(agent.get_direction_str(), path_to_risk[0])
 
         # 7. 완전히 고립되었다면 제자리 회전
         return "TurnRight"
