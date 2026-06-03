@@ -15,8 +15,7 @@ class WumpusKnowledgeBase:
     def reset_kb(self):
         self.visited = set()                  
         self.safe_cells = set([(1, 1)])       
-        
-        # 확률/카운트 기반
+        self.shot_cells = set()               # 이미 화살을 쏜 칸들
         # 0: 없음(No), 1이상: 가능성 있음(Maybe/Yes)
         self.wumpus_prob = {}
         self.pit_prob = {}
@@ -39,7 +38,6 @@ class WumpusKnowledgeBase:
     def tell(self, agent_x, agent_y, percept):
         stench, breeze, glitter, bump, scream = percept
         current_cell = (agent_x, agent_y)
-        
         self.visited.add(current_cell)
         self.safe_cells.add(current_cell)
         self.wumpus_map[current_cell] = 'No'
@@ -54,6 +52,14 @@ class WumpusKnowledgeBase:
             if 1 <= nx <= 4 and 1 <= ny <= 4:
                 adj_cells.append((nx, ny))
 
+        # 웜퍼스 비명 들렸을 때 처리
+        if scream:
+            # 비명이 들리면 웜퍼스가 죽었으므로 모든 칸에서 웜퍼스 위험 제거
+            for cell in self.wumpus_map:
+                self.wumpus_map[cell] = 'No'
+                self.wumpus_prob[cell] = 0
+            return # 웜퍼스가 죽었으므로 아래 추론 생략
+
         # 추론 로직 강화
         for adj in adj_cells:
             # 이미 방문한 칸은 안전이 확정된 칸이므로 건너뛴다
@@ -62,18 +68,20 @@ class WumpusKnowledgeBase:
                 
             # 1. 미풍(Breeze) 기반 추론
             if breeze:
-                # 미풍이 있으면 주변 칸의 위험 점수를 올린다 (확정된 곳이 아닐 때만)
                 if self.pit_map.get(adj) != 'Yes':
                     self.pit_prob[adj] += 1
                     self.pit_map[adj] = 'Maybe'
             else:
-                # 미풍이 없으면 주변 칸은 절대 웅덩이가 아니다
                 self.pit_prob[adj] = 0
                 self.pit_map[adj] = 'No'
 
             # 2. 악취(Stench) 기반 추론
             if stench:
-                if self.wumpus_map.get(adj) != 'Yes':
+                # 이미 쏜 칸인데 비명이 없었다면 웜퍼스가 없는 것
+                if adj in self.shot_cells:
+                    self.wumpus_prob[adj] = 0
+                    self.wumpus_map[adj] = 'No'
+                elif self.wumpus_map.get(adj) != 'Yes':
                     self.wumpus_prob[adj] += 1
                     self.wumpus_map[adj] = 'Maybe'
             else:
@@ -84,12 +92,10 @@ class WumpusKnowledgeBase:
             if self.pit_prob[adj] == 0 and self.wumpus_prob[adj] == 0:
                 self.safe_cells.add(adj)
             else:
-                # 위험 요소가 하나라도 있으면 안전 목록에서 제외 (이미 들어있었더라도)
                 if adj in self.safe_cells:
                     self.safe_cells.remove(adj)
 
     def mark_death(self, cell, element):
-        """에이전트가 죽은 칸을 확실한 위험 구역으로 기록합니다."""
         if cell in self.safe_cells:
             self.safe_cells.remove(cell)
         
@@ -152,9 +158,29 @@ class WumpusKnowledgeBase:
         if glitter and not agent.has_gold:
             return "Grab"
 
-        # 2. 왐퍼스 감지 시 사격
+        # 2. 웜퍼스 감지 시 사격 로직 
         if stench and agent.arrows > 0 and not agent.has_gold:
-            return "Shoot"
+            # 주변 4칸 중 웜퍼스가 있을 가능성이 있고, 아직 화살을 안 쏜 칸 찾기
+            candidates = []
+            for direction in DIRECTION_ORDER:
+                adj = self._get_neighbor(current_cell, direction)
+                if self._in_world(adj) and adj not in self.visited:
+                    # 웜퍼스가 있을 가능성이 있거나 확실한 곳 (이미 쏜 곳 제외)
+                    if (self.wumpus_map[adj] in ['Maybe', 'Yes']) and (adj not in self.shot_cells):
+                        candidates.append((adj, direction))
+            
+            if candidates:
+                # 첫 번째 후보를 타겟으로 설정
+                target_cell, target_dir = candidates[0]
+                current_dir = agent.get_direction_str()
+                
+                if current_dir == target_dir:
+                    # 방향이 맞으면 사격하고, 해당 칸을 shot_cells에 추가
+                    self.shot_cells.add(target_cell)
+                    return "Shoot"
+                else:
+                    # 방향이 다르면 회전
+                    return self._turn_toward(current_dir, target_dir)
 
         # 3. 금 획득 후 탈출
         if agent.has_gold:
